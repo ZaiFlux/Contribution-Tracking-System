@@ -1,0 +1,8 @@
+stages:
+  - test
+
+test-job:
+  stage: test
+  script:
+    - echo "CI/CD is working!"
+    - echo "Running Contribution Tracking System"
