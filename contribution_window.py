@@ -8,7 +8,11 @@ edit_refresh_callback = None
 
 program_name = sys.argv[1] if len(sys.argv) > 1 else "Program Name"
 
-# ===== FONT CONTROL =====
+# ✅ FIX: safe float conversion
+program_target = float(sys.argv[2].replace(",", "")) if len(sys.argv) > 2 else 0.0
+program_due = sys.argv[3] if len(sys.argv) > 3 else "Due Date"
+
+# ===== FONT CONTROL (UNCHANGED) =====
 TABLE_FONT = ("Consolas", 10)
 HEADER_FONT = ("Consolas", 10, "bold")
 
@@ -38,7 +42,7 @@ def refresh_table():
             f"{remaining:.2f}"
         ))
 
-# ===== ADD CONTRIBUTOR WINDOW =====
+# ===== ADD CONTRIBUTOR WINDOW (UNCHANGED UI) =====
 def open_add_contributor_window():
     win = tk.Toplevel(root)
     win.title("Contributor Form")
@@ -64,7 +68,7 @@ def open_add_contributor_window():
         contributors_data.append({
             "name": name,
             "current": 0.0,
-            "target": 0.0
+            "target": program_target  # ✅ FIXED
         })
 
         refresh_table()
@@ -128,7 +132,7 @@ def open_add_contributor_window():
         width=25
     ).pack(pady=20)
 
-# ===== EDIT WINDOW =====
+# ===== EDIT WINDOW (ONLY FIX NUMBER INPUT) =====
 def edit_contributor():
     global edit_refresh_callback
 
@@ -172,7 +176,7 @@ def edit_contributor():
 
                 def update_val():
                     try:
-                        data["current"] += float(entry.get())
+                        contributors_data[idx]["current"] += float(entry.get().replace(",", ""))  # ✅ FIX
                         refresh_table()
                         if edit_refresh_callback:
                             edit_refresh_callback()
@@ -194,7 +198,7 @@ def edit_contributor():
     edit_refresh_callback = refresh_edit
     refresh_edit()
 
-# ===== MAIN WINDOW =====
+# ===== MAIN WINDOW (UNCHANGED UI) =====
 root = tk.Tk()
 root.title("Contribution Program")
 root.geometry("900x500")
@@ -218,7 +222,6 @@ menu.add_command(label="Generate Receipt", command=generate_receipt)
 
 dots_button.bind("<Button-1>", lambda e: menu.post(e.x_root, e.y_root))
 
-# ===== TABLE =====
 scroll_container = ttk.Frame(root)
 scroll_container.pack(fill="both", expand=True, padx=10, pady=5)
 
@@ -226,7 +229,6 @@ columns = ("Contributor", "Current", "Target", "Remaining")
 
 contributor_tree = ttk.Treeview(scroll_container, columns=columns, show="headings")
 
-# ===== LEFT ALIGNMENT =====
 contributor_tree.heading("Contributor", text="Contributor", anchor="w")
 contributor_tree.heading("Current", text="Current", anchor="w")
 contributor_tree.heading("Target", text="Target", anchor="w")
@@ -242,13 +244,6 @@ style.configure("Treeview.Heading", font=HEADER_FONT)
 style.configure("Treeview", font=TABLE_FONT, rowheight=20)
 
 contributor_tree.pack(fill="both", expand=True)
-
-# ===== SAMPLE DATA =====
-contributors_data = [
-    {"name": "John Doe", "current": 0.00, "target": 100.00},
-    {"name": "Jane Smith", "current": 50.00, "target": 100.00},
-    {"name": "Alice Johnson", "current": 75.50, "target": 150.00}
-]
 
 refresh_table()
 

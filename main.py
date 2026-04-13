@@ -28,11 +28,21 @@ def open_contribution_window():
     def submit_info():
         name = entry_name.get().strip()
         purpose = entry_purpose.get().strip()
-        target = entry_target.get().strip()
+        target = entry_target.get().strip().replace(",", "")  # ✅ FIX ONLY
         due = entry_due.get().strip()
 
         if not name:
             messagebox.showwarning("Input Error", "Program Name cannot be empty!")
+            return
+
+        if not target:
+            messagebox.showwarning("Input Error", "Target cannot be empty!")
+            return
+
+        try:
+            float(target)
+        except:
+            messagebox.showerror("Error", "Invalid target amount")
             return
 
         add_program_to_list(name, purpose, target, due)
@@ -41,9 +51,15 @@ def open_contribution_window():
     tk.Button(contrib_window, text="Add", command=submit_info).pack(pady=15)
 
 
-# ⭐ ONLY CONNECTION CHANGE (PASS PROGRAM NAME)
-def open_program_window(program_name):
-    subprocess.Popen([sys.executable, "contribution_window.py", program_name])
+# ⭐ OPEN PROGRAM (FIXED TARGET PASSING)
+def open_program_window(program_name, target, due):
+    subprocess.Popen([
+        sys.executable,
+        "contribution_window.py",
+        program_name,
+        target.replace(",", ""),   # ✅ FIX
+        due
+    ])
 
 
 # --- Function to add program row ---
@@ -52,8 +68,8 @@ def add_program_to_list(program_name, purpose, target, due):
     def delete_program():
         lbl_frame.destroy()
 
-    def on_click(event, name=program_name):
-        open_program_window(name)
+    def on_click(event, name=program_name, t=target, d=due):
+        open_program_window(name, t, d)
 
     lbl_frame = tk.Frame(scrollable_frame)
     lbl_frame.pack(fill="x", padx=5, pady=2)
@@ -87,7 +103,7 @@ def add_program_to_list(program_name, purpose, target, due):
     dots_btn.bind("<Button-1>", show_menu)
 
 
-# --- Main window ---
+# --- MAIN WINDOW (UNCHANGED UI) ---
 root = tk.Tk()
 root.title("Main Page")
 root.geometry("700x500")
