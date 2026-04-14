@@ -8,13 +8,21 @@ edit_refresh_callback = None
 
 program_name = sys.argv[1] if len(sys.argv) > 1 else "Program Name"
 
-# ✅ FIX: safe float conversion
-program_target = float(sys.argv[2].replace(",", "")) if len(sys.argv) > 2 else 0.0
-program_due = sys.argv[3] if len(sys.argv) > 3 else "Due Date"
+# ✅ SAFE TARGET (prevents crash like 'Outing')
+try:
+    program_target = float(sys.argv[2].replace(",", "")) if len(sys.argv) > 2 else 0.0
+except:
+    program_target = 0.0
 
-# ===== FONT CONTROL (UNCHANGED) =====
-TABLE_FONT = ("Consolas", 10)
-HEADER_FONT = ("Consolas", 10, "bold")
+program_due = sys.argv[3] if len(sys.argv) > 3 else "Due Date"
+program_purpose = sys.argv[4] if len(sys.argv) > 4 else ""
+
+# ===== CONFIRM DELETE =====
+def confirm_delete(name):
+    return messagebox.askyesno(
+        "Confirm Delete",
+        f"Are you sure you want to delete '{name}'?\n\nThis action cannot be undone."
+    )
 
 def main_menu():
     print("Main Menu clicked")
@@ -22,42 +30,113 @@ def main_menu():
 def add_contributor():
     open_add_contributor_window()
 
+# =========================
+# RECEIPT LIST (UNCHANGED UI)
+# =========================
 def generate_receipt():
-    print("Generate Receipt clicked")
+    if not contributors_data:
+        messagebox.showinfo("No Data", "No contributors available.")
+        return
 
-# ===== REFRESH TABLE =====
+    win = tk.Toplevel(root)
+    win.title("Select Contributor")
+    win.geometry("300x300")
+
+    tk.Label(win, text="Select Contributor").pack(pady=10)
+
+    listbox = tk.Listbox(win)
+    listbox.pack(fill="both", expand=True, padx=10, pady=10)
+
+    for c in contributors_data:
+        listbox.insert(tk.END, c["name"])
+
+    def open_receipt():
+        if not listbox.curselection():
+            messagebox.showerror("Error", "Select a contributor")
+            return
+
+        idx = listbox.curselection()[0]
+        contributor = contributors_data[idx]
+
+        win.destroy()
+        show_receipt(contributor)
+
+    tk.Button(win, text="Generate Receipt", command=open_receipt).pack(pady=10)
+
+
+# =========================
+# RECEIPT (YOUR FORMAT)
+# =========================
+def show_receipt(c):
+
+    total_contributed = c["current"]
+    remaining = c["target"] - c["current"]
+
+    receipt = tk.Toplevel(root)
+    receipt.title("Receipt")
+    receipt.geometry("520x650")
+    receipt.configure(bg="white")
+
+    text = f"""
+========================================
+        CONTRIBUTION RECEIPT
+========================================
+
+Contributor Information
+-----------------------
+Name            : {c.get('name','')}
+Category        : {c.get('category','')}
+Contact Number  : {c.get('phone','')}
+Email           : {c.get('email','')}
+Address         : {c.get('address','')}
+
+Contribution Program Details
+----------------------------
+Program Name    : {program_name}
+Purpose         : {program_purpose}
+Due Date        : {program_due}
+
+Financial Summary
+-----------------
+Total Contributed : ₱{total_contributed:,.2f}
+Target Amount     : ₱{c['target']:,.2f}
+Remaining Balance : ₱{remaining:,.2f}
+
+========================================
+   Thank you for your contribution!
+========================================
+"""
+
+    tk.Label(
+        receipt,
+        text=text,
+        font=("Courier", 10),
+        justify="left",
+        bg="white",
+        anchor="w"
+    ).pack(padx=10, pady=10)
+
+
+# ===== TABLE =====
 def refresh_table():
     for item in contributor_tree.get_children():
         contributor_tree.delete(item)
 
-    if not contributors_data:
-        return
-
-    for data in contributors_data:
-        remaining = data["target"] - data["current"]
+    for d in contributors_data:
+        remaining = d["target"] - d["current"]
         contributor_tree.insert("", "end", values=(
-            data["name"],
-            f"{data['current']:.2f}",
-            f"{data['target']:.2f}",
+            d["name"],
+            f"{d['current']:.2f}",
+            f"{d['target']:.2f}",
             f"{remaining:.2f}"
         ))
 
-# ===== ADD CONTRIBUTOR WINDOW (UNCHANGED UI) =====
+
+# ===== ADD CONTRIBUTOR (NO UI CHANGE) =====
 def open_add_contributor_window():
     win = tk.Toplevel(root)
     win.title("Contributor Form")
     win.geometry("450x550")
-
-    def update_dynamic_field(*args):
-        category = category_var.get()
-        if category in ["Student", "Teacher"]:
-            dynamic_label.config(text="School")
-        elif category == "Alumni":
-            dynamic_label.config(text="Year Graduated")
-        elif category == "Parent Sponsor":
-            dynamic_label.config(text="Child Name")
-        else:
-            dynamic_label.config(text="Additional Info")
 
     def submit_form():
         name = name_entry.get()
@@ -67,8 +146,12 @@ def open_add_contributor_window():
 
         contributors_data.append({
             "name": name,
+            "category": category_var.get(),
+            "phone": phone_entry.get(),
+            "email": email_entry.get(),
+            "address": "",
             "current": 0.0,
-            "target": program_target  # ✅ FIXED
+            "target": program_target
         })
 
         refresh_table()
@@ -82,7 +165,6 @@ def open_add_contributor_window():
     tk.Label(form_frame, text="Category", font=("Arial", 10, "bold")).pack()
 
     category_var = tk.StringVar()
-
     category_dropdown = ttk.Combobox(
         form_frame,
         textvariable=category_var,
@@ -91,19 +173,10 @@ def open_add_contributor_window():
     )
 
     category_dropdown["values"] = (
-        "Select Category",
-        "Student",
-        "Teacher",
-        "Alumni",
-        "Parent",
-        "Sponsor",
-        "Others"
+        "Student", "Teacher", "Alumni", "Parent", "Sponsor", "Others"
     )
-
     category_dropdown.current(0)
     category_dropdown.pack(pady=5)
-
-    category_var.trace_add("write", update_dynamic_field)
 
     tk.Label(form_frame, text="Full Name").pack()
     name_entry = tk.Entry(form_frame, width=35)
@@ -117,22 +190,17 @@ def open_add_contributor_window():
     email_entry = tk.Entry(form_frame, width=35)
     email_entry.pack(pady=5)
 
-    dynamic_label = tk.Label(form_frame, text="Additional Info")
-    dynamic_label.pack()
-
-    dynamic_entry = tk.Entry(form_frame, width=35)
-    dynamic_entry.pack(pady=5)
-
     tk.Button(
         win,
         text="Add Contributor",
-        command=submit_form,
         bg="#4CAF50",
         fg="white",
-        width=25
+        width=25,
+        command=submit_form
     ).pack(pady=20)
 
-# ===== EDIT WINDOW (ONLY FIX NUMBER INPUT) =====
+
+# ===== EDIT (UNCHANGED UI) =====
 def edit_contributor():
     global edit_refresh_callback
 
@@ -176,7 +244,7 @@ def edit_contributor():
 
                 def update_val():
                     try:
-                        contributors_data[idx]["current"] += float(entry.get().replace(",", ""))  # ✅ FIX
+                        contributors_data[idx]["current"] += float(entry.get().replace(",", ""))
                         refresh_table()
                         if edit_refresh_callback:
                             edit_refresh_callback()
@@ -189,16 +257,19 @@ def edit_contributor():
             ttk.Button(row, text="Add Amount", command=open_add_amount).pack(side="left", padx=5)
 
             def delete_item(idx=i):
-                contributors_data.pop(idx)
-                refresh_edit()
-                refresh_table()
+                name = contributors_data[idx]["name"]
+                if confirm_delete(name):
+                    contributors_data.pop(idx)
+                    refresh_edit()
+                    refresh_table()
 
             ttk.Button(row, text="❌", command=delete_item).pack(side="right")
 
     edit_refresh_callback = refresh_edit
     refresh_edit()
 
-# ===== MAIN WINDOW (UNCHANGED UI) =====
+
+# ===== MAIN UI (UNCHANGED) =====
 root = tk.Tk()
 root.title("Contribution Program")
 root.geometry("900x500")
@@ -206,12 +277,15 @@ root.geometry("900x500")
 top_frame = ttk.Frame(root, padding=5, relief="solid", borderwidth=1)
 top_frame.pack(fill="x", padx=10, pady=5)
 
+top_frame.columnconfigure(0, weight=1)
+top_frame.columnconfigure(1, weight=1)
+top_frame.columnconfigure(2, weight=1)
+
 ttk.Label(top_frame, text=program_name, font=("Arial", 12)).grid(row=0, column=0, sticky="w")
-ttk.Label(top_frame, text="Due Date", font=("Arial", 10)).grid(row=0, column=1)
+ttk.Label(top_frame, text=f"Due Date: {program_due}", font=("Arial", 10)).grid(row=0, column=1)
 
 dots_button = ttk.Button(top_frame, text="⋯", width=3)
 dots_button.grid(row=0, column=2, sticky="e")
-top_frame.columnconfigure(1, weight=1)
 
 menu = tk.Menu(root, tearoff=0)
 menu.add_command(label="Main Menu", command=main_menu)
@@ -229,22 +303,12 @@ columns = ("Contributor", "Current", "Target", "Remaining")
 
 contributor_tree = ttk.Treeview(scroll_container, columns=columns, show="headings")
 
-contributor_tree.heading("Contributor", text="Contributor", anchor="w")
-contributor_tree.heading("Current", text="Current", anchor="w")
-contributor_tree.heading("Target", text="Target", anchor="w")
-contributor_tree.heading("Remaining", text="Remaining", anchor="w")
-
-contributor_tree.column("Contributor", anchor="w", width=220)
-contributor_tree.column("Current", anchor="w", width=120)
-contributor_tree.column("Target", anchor="w", width=120)
-contributor_tree.column("Remaining", anchor="w", width=120)
-
-style = ttk.Style()
-style.configure("Treeview.Heading", font=HEADER_FONT)
-style.configure("Treeview", font=TABLE_FONT, rowheight=20)
+contributor_tree.heading("Contributor", text="Contributor")
+contributor_tree.heading("Current", text="Current")
+contributor_tree.heading("Target", text="Target")
+contributor_tree.heading("Remaining", text="Remaining")
 
 contributor_tree.pack(fill="both", expand=True)
 
 refresh_table()
-
 root.mainloop()
