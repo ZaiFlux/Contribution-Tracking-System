@@ -1,8 +1,9 @@
 stages:
   - test
 
-test-job:
+test_job:
   stage: test
+  image: python:3.10
   script:
-    - echo "CI/CD is working!"
-    - echo "Running Contribution Tracking System"
+    - python --version
+    - python -m py_compile main.py
