@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sys
+import textwrap   # ✅ REQUIRED FIX
 
 # ===== DATA =====
 contributors_data = []
@@ -8,7 +9,7 @@ edit_refresh_callback = None
 
 program_name = sys.argv[1] if len(sys.argv) > 1 else "Program Name"
 
-# ✅ SAFE TARGET (prevents crash like 'Outing')
+# SAFE TARGET
 try:
     program_target = float(sys.argv[2].replace(",", "")) if len(sys.argv) > 2 else 0.0
 except:
@@ -17,6 +18,7 @@ except:
 program_due = sys.argv[3] if len(sys.argv) > 3 else "Due Date"
 program_purpose = sys.argv[4] if len(sys.argv) > 4 else ""
 
+
 # ===== CONFIRM DELETE =====
 def confirm_delete(name):
     return messagebox.askyesno(
@@ -24,14 +26,17 @@ def confirm_delete(name):
         f"Are you sure you want to delete '{name}'?\n\nThis action cannot be undone."
     )
 
+
 def main_menu():
     print("Main Menu clicked")
+
 
 def add_contributor():
     open_add_contributor_window()
 
+
 # =========================
-# RECEIPT LIST (UNCHANGED UI)
+# RECEIPT LIST
 # =========================
 def generate_receipt():
     if not contributors_data:
@@ -65,12 +70,21 @@ def generate_receipt():
 
 
 # =========================
-# RECEIPT (YOUR FORMAT)
+# RECEIPT (FIXED ALIGNMENT)
 # =========================
 def show_receipt(c):
 
     total_contributed = c["current"]
     remaining = c["target"] - c["current"]
+
+    # ✅ FIXED ADDRESS WRAP + ALIGNMENT
+    address = c.get('address', '')
+
+    wrapped_address = textwrap.fill(
+        address,
+        width=40,
+        subsequent_indent=" " * 17
+    )
 
     receipt = tk.Toplevel(root)
     receipt.title("Receipt")
@@ -88,7 +102,7 @@ Name            : {c.get('name','')}
 Category        : {c.get('category','')}
 Contact Number  : {c.get('phone','')}
 Email           : {c.get('email','')}
-Address         : {c.get('address','')}
+Address         : {wrapped_address}
 
 Contribution Program Details
 ----------------------------
@@ -132,7 +146,7 @@ def refresh_table():
         ))
 
 
-# ===== ADD CONTRIBUTOR (NO UI CHANGE) =====
+# ===== ADD CONTRIBUTOR =====
 def open_add_contributor_window():
     win = tk.Toplevel(root)
     win.title("Contributor Form")
@@ -149,7 +163,7 @@ def open_add_contributor_window():
             "category": category_var.get(),
             "phone": phone_entry.get(),
             "email": email_entry.get(),
-            "address": "",
+            "address": address_entry.get(),
             "current": 0.0,
             "target": program_target
         })
@@ -189,6 +203,10 @@ def open_add_contributor_window():
     tk.Label(form_frame, text="Email Address").pack()
     email_entry = tk.Entry(form_frame, width=35)
     email_entry.pack(pady=5)
+
+    tk.Label(form_frame, text="Address").pack()
+    address_entry = tk.Entry(form_frame, width=35)
+    address_entry.pack(pady=5)
 
     tk.Button(
         win,
@@ -269,7 +287,7 @@ def edit_contributor():
     refresh_edit()
 
 
-# ===== MAIN UI (UNCHANGED) =====
+# ===== MAIN UI =====
 root = tk.Tk()
 root.title("Contribution Program")
 root.geometry("900x500")

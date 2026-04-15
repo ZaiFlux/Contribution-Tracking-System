@@ -28,21 +28,17 @@ def open_contribution_window():
     def submit_info():
         name = entry_name.get().strip()
         purpose = entry_purpose.get().strip()
-        target = entry_target.get().strip().replace(",", "")  # ✅ FIX ONLY
+        target = entry_target.get().strip().replace(",", "")
         due = entry_due.get().strip()
 
         if not name:
             messagebox.showwarning("Input Error", "Program Name cannot be empty!")
             return
 
-        if not target:
-            messagebox.showwarning("Input Error", "Target cannot be empty!")
-            return
-
         try:
             float(target)
         except:
-            messagebox.showerror("Error", "Invalid target amount")
+            messagebox.showerror("Error", "Target must be a number")
             return
 
         add_program_to_list(name, purpose, target, due)
@@ -51,33 +47,28 @@ def open_contribution_window():
     tk.Button(contrib_window, text="Add", command=submit_info).pack(pady=15)
 
 
-# ⭐ OPEN PROGRAM (FIXED TARGET PASSING)
-def open_program_window(program_name, target, due):
+# ⭐ FIXED ARGUMENT ORDER (IMPORTANT)
+def open_program_window(program_name, target, due, purpose):
     subprocess.Popen([
         sys.executable,
         "contribution_window.py",
         program_name,
-        target.replace(",", ""),   # ✅ FIX
-        due
+        target.replace(",", ""),
+        due,
+        purpose
     ])
 
 
-# --- Function to add program row ---
 def add_program_to_list(program_name, purpose, target, due):
 
     def delete_program():
         lbl_frame.destroy()
 
-    def on_click(event, name=program_name, t=target, d=due):
-        open_program_window(name, t, d)
+    def on_click(event, name=program_name, t=target, d=due, p=purpose):
+        open_program_window(name, t, d, p)
 
     lbl_frame = tk.Frame(scrollable_frame)
     lbl_frame.pack(fill="x", padx=5, pady=2)
-
-    program_name = program_name[:18]
-    purpose = purpose[:18]
-    target = target[:13]
-    due = due[:13]
 
     row_text = f"{program_name:<20}{purpose:<20}{target:<15}{due:<15}"
 
@@ -91,19 +82,16 @@ def add_program_to_list(program_name, purpose, target, due):
     lbl.pack(side="left", fill="x", expand=True)
     lbl.bind("<Button-1>", on_click)
 
-    dots_btn = tk.Button(lbl_frame, text="⋮", font=("Arial", 12), bd=0, cursor="hand2")
+    dots_btn = tk.Button(lbl_frame, text="⋮")
     dots_btn.pack(side="right")
 
     menu = tk.Menu(lbl_frame, tearoff=0)
     menu.add_command(label="Delete", command=delete_program)
 
-    def show_menu(event):
-        menu.tk_popup(event.x_root, event.y_root)
-
-    dots_btn.bind("<Button-1>", show_menu)
+    dots_btn.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
 
-# --- MAIN WINDOW (UNCHANGED UI) ---
+# --- MAIN WINDOW ---
 root = tk.Tk()
 root.title("Main Page")
 root.geometry("700x500")
