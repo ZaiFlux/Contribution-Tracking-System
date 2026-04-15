@@ -55,8 +55,6 @@ def load_contributors():
 
     rows = cursor.fetchall()
 
-    contributors_data.clear()  # ✅ FIX: prevent duplicate + reset issue
-
     for r in rows:
         contributors_data.append({
             "name": r[0],
@@ -64,8 +62,8 @@ def load_contributors():
             "phone": r[2],
             "email": r[3],
             "address": r[4],
-            "current": float(r[5]),   # ✅ FIX: force numeric
-            "target": float(r[6])
+            "current": r[5],
+            "target": r[6]
         })
 
     conn.close()
@@ -344,10 +342,9 @@ def edit_contributor():
                 def update_val():
                     try:
                         amount = float(entry.get().replace(",", ""))
-
                         contributors_data[idx]["current"] += amount
 
-                        # ✅ SAVE TO DB (FIXED RELIABILITY)
+                        # ✅ SAVE UPDATE
                         update_contribution(
                             contributors_data[idx]["name"],
                             contributors_data[idx]["current"]
@@ -419,7 +416,7 @@ contributor_tree.heading("Remaining", text="Remaining")
 
 contributor_tree.pack(fill="both", expand=True)
 
-# ===== LOAD DATA =====
+# ✅ LOAD DATA
 load_contributors()
 refresh_table()
 

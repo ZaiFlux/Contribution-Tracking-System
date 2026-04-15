@@ -4,24 +4,64 @@ import subprocess
 import sys
 import sqlite3
 
+# ================= DATABASE SETUP =================
+def init_db():
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS programs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            purpose TEXT,
+            target REAL,
+            due TEXT
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS contributors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            program_name TEXT,
+            name TEXT,
+            category TEXT,
+            phone TEXT,
+            email TEXT,
+            address TEXT,
+            current REAL,
+            target REAL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
 def save_program(name, purpose, target, due):
     conn = sqlite3.connect("contribution.db")
     cursor = conn.cursor()
+
     cursor.execute("""
         INSERT INTO programs (name, purpose, target, due)
         VALUES (?, ?, ?, ?)
     """, (name, purpose, float(target), due))
+
     conn.commit()
     conn.close()
+
 
 def load_programs():
     conn = sqlite3.connect("contribution.db")
     cursor = conn.cursor()
+
     cursor.execute("SELECT name, purpose, target, due FROM programs")
     for r in cursor.fetchall():
         add_program_to_list(r[0], r[1], str(r[2]), r[3])
+
     conn.close()
 
+
+# ================= UI =================
 def open_contribution_window():
     contrib_window = tk.Toplevel(root)
     contrib_window.title("Create Contribution Program")
@@ -61,9 +101,11 @@ def open_contribution_window():
 
         save_program(name, purpose, target, due)
         add_program_to_list(name, purpose, target, due)
+
         contrib_window.destroy()
 
     tk.Button(contrib_window, text="Add", command=submit_info).pack(pady=15)
+
 
 def open_program_window(program_name, target, due, purpose):
     subprocess.Popen([
@@ -74,6 +116,7 @@ def open_program_window(program_name, target, due, purpose):
         due,
         purpose
     ])
+
 
 def add_program_to_list(program_name, purpose, target, due):
 
@@ -100,6 +143,10 @@ def add_program_to_list(program_name, purpose, target, due):
     menu.add_command(label="Delete", command=delete_program)
 
     dots_btn.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+
+# ================= MAIN =================
+init_db()
 
 root = tk.Tk()
 root.title("Main Page")
@@ -132,4 +179,5 @@ canvas.pack(side="left", fill="both", expand=True)
 scrollbar.pack(side="right", fill="y")
 
 load_programs()
+
 root.mainloop()
