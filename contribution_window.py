@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sys
-import textwrap   # ✅ REQUIRED FIX
+import textwrap
+import sqlite3
 
 # ===== DATA =====
 contributors_data = []
@@ -9,7 +10,6 @@ edit_refresh_callback = None
 
 program_name = sys.argv[1] if len(sys.argv) > 1 else "Program Name"
 
-# SAFE TARGET
 try:
     program_target = float(sys.argv[2].replace(",", "")) if len(sys.argv) > 2 else 0.0
 except:
@@ -17,6 +17,83 @@ except:
 
 program_due = sys.argv[3] if len(sys.argv) > 3 else "Due Date"
 program_purpose = sys.argv[4] if len(sys.argv) > 4 else ""
+
+# ================= DATABASE =================
+def save_contributor(data):
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO contributors (
+            program_name, name, category, phone, email, address, current, target
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        program_name,
+        data["name"],
+        data["category"],
+        data["phone"],
+        data["email"],
+        data["address"],
+        data["current"],
+        program_target
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def load_contributors():
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT name, category, phone, email, address, current, target
+        FROM contributors
+        WHERE program_name = ?
+    """, (program_name,))
+
+    rows = cursor.fetchall()
+
+    for r in rows:
+        contributors_data.append({
+            "name": r[0],
+            "category": r[1],
+            "phone": r[2],
+            "email": r[3],
+            "address": r[4],
+            "current": r[5],
+            "target": r[6]
+        })
+
+    conn.close()
+
+
+def update_contribution(name, new_amount):
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE contributors
+        SET current = ?
+        WHERE program_name = ? AND name = ?
+    """, (new_amount, program_name, name))
+
+    conn.commit()
+    conn.close()
+
+
+def delete_contributor_db(name):
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        DELETE FROM contributors
+        WHERE program_name = ? AND name = ?
+    """, (program_name, name))
+
+    conn.commit()
+    conn.close()
 
 
 # ===== CONFIRM DELETE =====
@@ -70,14 +147,13 @@ def generate_receipt():
 
 
 # =========================
-# RECEIPT (FIXED ALIGNMENT)
+# RECEIPT
 # =========================
 def show_receipt(c):
 
     total_contributed = c["current"]
     remaining = c["target"] - c["current"]
 
-    # ✅ FIXED ADDRESS WRAP + ALIGNMENT
     address = c.get('address', '')
 
     wrapped_address = textwrap.fill(
@@ -158,7 +234,7 @@ def open_add_contributor_window():
             messagebox.showerror("Error", "Name is required.")
             return
 
-        contributors_data.append({
+        data = {
             "name": name,
             "category": category_var.get(),
             "phone": phone_entry.get(),
@@ -166,7 +242,10 @@ def open_add_contributor_window():
             "address": address_entry.get(),
             "current": 0.0,
             "target": program_target
-        })
+        }
+
+        contributors_data.append(data)
+        save_contributor(data)
 
         refresh_table()
         if edit_refresh_callback:
@@ -218,7 +297,7 @@ def open_add_contributor_window():
     ).pack(pady=20)
 
 
-# ===== EDIT (UNCHANGED UI) =====
+# ===== EDIT =====
 def edit_contributor():
     global edit_refresh_callback
 
@@ -262,7 +341,15 @@ def edit_contributor():
 
                 def update_val():
                     try:
-                        contributors_data[idx]["current"] += float(entry.get().replace(",", ""))
+                        amount = float(entry.get().replace(",", ""))
+                        contributors_data[idx]["current"] += amount
+
+                        # ✅ SAVE UPDATE
+                        update_contribution(
+                            contributors_data[idx]["name"],
+                            contributors_data[idx]["current"]
+                        )
+
                         refresh_table()
                         if edit_refresh_callback:
                             edit_refresh_callback()
@@ -277,6 +364,7 @@ def edit_contributor():
             def delete_item(idx=i):
                 name = contributors_data[idx]["name"]
                 if confirm_delete(name):
+                    delete_contributor_db(name)
                     contributors_data.pop(idx)
                     refresh_edit()
                     refresh_table()
@@ -328,5 +416,8 @@ contributor_tree.heading("Remaining", text="Remaining")
 
 contributor_tree.pack(fill="both", expand=True)
 
+# ✅ LOAD DATA
+load_contributors()
 refresh_table()
+
 root.mainloop()

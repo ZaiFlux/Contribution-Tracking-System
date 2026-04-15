@@ -2,8 +2,26 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import subprocess
 import sys
+import sqlite3
 
-# --- Function to open Contribution Program window ---
+def save_program(name, purpose, target, due):
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO programs (name, purpose, target, due)
+        VALUES (?, ?, ?, ?)
+    """, (name, purpose, float(target), due))
+    conn.commit()
+    conn.close()
+
+def load_programs():
+    conn = sqlite3.connect("contribution.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, purpose, target, due FROM programs")
+    for r in cursor.fetchall():
+        add_program_to_list(r[0], r[1], str(r[2]), r[3])
+    conn.close()
+
 def open_contribution_window():
     contrib_window = tk.Toplevel(root)
     contrib_window.title("Create Contribution Program")
@@ -41,13 +59,12 @@ def open_contribution_window():
             messagebox.showerror("Error", "Target must be a number")
             return
 
+        save_program(name, purpose, target, due)
         add_program_to_list(name, purpose, target, due)
         contrib_window.destroy()
 
     tk.Button(contrib_window, text="Add", command=submit_info).pack(pady=15)
 
-
-# ⭐ FIXED ARGUMENT ORDER (IMPORTANT)
 def open_program_window(program_name, target, due, purpose):
     subprocess.Popen([
         sys.executable,
@@ -57,7 +74,6 @@ def open_program_window(program_name, target, due, purpose):
         due,
         purpose
     ])
-
 
 def add_program_to_list(program_name, purpose, target, due):
 
@@ -72,13 +88,8 @@ def add_program_to_list(program_name, purpose, target, due):
 
     row_text = f"{program_name:<20}{purpose:<20}{target:<15}{due:<15}"
 
-    lbl = tk.Label(
-        lbl_frame,
-        text=row_text,
-        font=("Courier New", 11),
-        anchor="w",
-        cursor="hand2"
-    )
+    lbl = tk.Label(lbl_frame, text=row_text,
+                   font=("Courier New", 11), anchor="w", cursor="hand2")
     lbl.pack(side="left", fill="x", expand=True)
     lbl.bind("<Button-1>", on_click)
 
@@ -90,30 +101,19 @@ def add_program_to_list(program_name, purpose, target, due):
 
     dots_btn.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
-
-# --- MAIN WINDOW ---
 root = tk.Tk()
 root.title("Main Page")
 root.geometry("700x500")
 
-tk.Button(
-    root,
-    text="Create Contribution Program",
-    command=open_contribution_window,
-    width=30,
-    height=2
-).pack(pady=10)
+tk.Button(root, text="Create Contribution Program",
+          command=open_contribution_window, width=30, height=2).pack(pady=10)
 
 ttk.Separator(root, orient='horizontal').pack(fill='x', padx=10, pady=5)
 
 header_text = f"{'Program Name':<20}{'Purpose':<20}{'Target':<15}{'Due Date':<15}"
 
-tk.Label(
-    root,
-    text=header_text,
-    font=("Courier New", 11, "bold"),
-    anchor="w"
-).pack(fill="x", padx=10)
+tk.Label(root, text=header_text,
+         font=("Courier New", 11, "bold"), anchor="w").pack(fill="x", padx=10)
 
 scroll_frame = tk.Frame(root)
 scroll_frame.pack(fill="both", expand=True, padx=10, pady=5)
@@ -122,10 +122,8 @@ canvas = tk.Canvas(scroll_frame)
 scrollbar = ttk.Scrollbar(scroll_frame, orient="vertical", command=canvas.yview)
 scrollable_frame = tk.Frame(canvas)
 
-scrollable_frame.bind(
-    "<Configure>",
-    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-)
+scrollable_frame.bind("<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
 canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar.set)
@@ -133,4 +131,5 @@ canvas.configure(yscrollcommand=scrollbar.set)
 canvas.pack(side="left", fill="both", expand=True)
 scrollbar.pack(side="right", fill="y")
 
+load_programs()
 root.mainloop()
